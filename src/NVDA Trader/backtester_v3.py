@@ -43,6 +43,7 @@ df["timestamp"] = pd.to_datetime(df["timestamp"])
 
 # === Parameters ===
 initial_capital = 100
+position_size = 0.4  # Moderate sizing - 40% of capital per trade
 atr_multiplier = 1.8  # Return to standard 2x ATR stops
 take_profit_multiplier = 0  # NO fixed take profit - let regime/trend handle it
 max_trades_per_day = 2  # REDUCED from 4 to limit churn
@@ -53,29 +54,6 @@ buffer = 0.005  # 0.5% buffer (sweet spot - reduced whipsaws)
 min_hold_hours = 2  # Minimum 2 hours in regime
 tactical_stop_atr = 1.8  # Tighter stops to let winners run
 min_bars_between_trades = 5  # Prevent excessive churn
-
-# === PROFESSIONAL RISK MANAGEMENT (4-Layer System) ===
-# Layer 1: Base Risk Per Trade (volatility-adjusted)
-risk_per_trade = 0.025  # Risk 2.5% of capital per trade
-
-# Layer 2: Regime Strength Multiplier (size up on strong signals)
-strong_slope_threshold = 0.015  # Strong uptrend slope
-weak_slope_threshold = -0.010  # Weakening trend slope
-regime_multiplier_strong = 1.4  # 40% larger position in strong trends
-regime_multiplier_weak = 0.7    # 30% smaller position in weak trends
-
-# Layer 3: Equity Curve Acceleration (lean in on momentum)
-equity_acceleration_boost = 1.2  # 20% size boost on new equity highs
-
-# Layer 4: Drawdown Throttle (prevent blow-ups)
-drawdown_danger_threshold = -0.20  # If down 20%+, reduce position size
-drawdown_pause_factor = 0.6       # Cut position size to 60% when in danger zone
-
-print("=== PROFESSIONAL 4-LAYER RISK MANAGEMENT ===")
-print(f"Layer 1 - Base Risk: {risk_per_trade*100:.1f}% of capital per trade")
-print(f"Layer 2 - Regime Strength: {regime_multiplier_strong}x (strong) / {regime_multiplier_weak}x (weak)")
-print(f"Layer 3 - Equity Acceleration: {equity_acceleration_boost}x multiplier on new highs")
-print(f"Layer 4 - Drawdown Throttle: {drawdown_danger_threshold*100:.0f}% threshold, {drawdown_pause_factor}x reduction\n")
 
 # === Precompute indicators (safe, non-trade-altering) ===
 df["ema9"] = df["close"].ewm(span=9, adjust=False).mean()

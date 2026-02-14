@@ -248,8 +248,5 @@ class AlpacaLiveBot:
 if __name__ == "__main__":
     bot = AlpacaLiveBot(symbol="TSLA", mode="paper")
     
-    # TEST MODE (single iteration, no actual trading)
-    logger.info("Running bot in test mode...")
-    
-    # Uncomment below to enable continuous trading:
-    # bot.run(check_interval=300)  # Check every 5 minutes
+    # Start continuous trading
+    bot.run(check_interval=300)  # Check every 5 minutes
