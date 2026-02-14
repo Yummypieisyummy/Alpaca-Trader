@@ -1,0 +1,97 @@
+For XLK (a liquid, large ETF), good intraday signals are:
+    -Price trend (short-term momentum)
+    -Volume confirmation
+    -Moving averages (trend bias)
+    -VWAP (intraday fair value)
+    -Volatility expansion (breakouts)
+
+Bot should monitor every 1–5 minutes:
+
+-Trend Bias:
+    9 EMA
+    20 EMA
+    50 EMA
+-Rules:
+    9 > 20 > 50 → bullish bias
+    9 < 20 < 50 → bearish bias
+
+-Volume Strength
+    Current volume vs 20-period average volume
+    Volume spike = breakout confirmation
+
+-Candlestick Features (Quantifiable)
+    Instead of “looks bullish,” encode:
+    Body size
+    Wick size ratio
+    Bullish engulfing (close > previous high)
+    Bearish engulfing (close < previous low)
+
+-VWAP (Very Important for Intraday)
+    Price above VWAP → institutions likely long bias
+    Price below VWAP → sell pressure bias
+
+-Momentum
+    RSI (14)
+    MACD histogram slope
+
+
+-Process Structure
+Data Collector (Alpaca API)
+        ↓
+Feature Generator
+        ↓
+Signal Scoring Engine
+        ↓
+Decision Logic
+        ↓
+Risk Manager
+        ↓
+Execution
+
+-Scoring System
+| Signal            | Condition | Score |
+| ----------------- | --------- | ----- |
+| EMA Alignment     | Bullish   | +2    |
+| Volume Spike      | Yes       | +1    |
+| Above VWAP        | Yes       | +1    |
+| RSI between 50–70 | Yes       | +1    |
+| Bearish Engulfing | Yes       | -2    |
+
+-Risk Management
+    Max 1–2 trades per hour
+    Risk only 0.5–1% per trade
+    Hard stop loss (never optional)
+    Stop trading after 2 consecutive losses
+    No overnight holds (for now)
+
+
+-File Structure
+xlk_bot/
+│
+├─ data/
+│   ├─ xlk_5min_2022_2025.csv        # raw historical data
+│   └─ xlk_features.csv              # feature-engineered dataset
+│
+├─ src/
+│   ├─ download_data.py              # pulls data from Alpaca
+│   ├─ feature_engineering.py        # computes EMAs, RSI, VWAP distance, etc.
+│   ├─ signal_generator.py           # generates buy/sell signals
+│   ├─ backtester.py                 # simulates trades and computes metrics
+│   ├─ risk_manager.py               # stop-loss, take-profit, max trades
+│   └─ utils.py                      # helper functions (datetime handling, CSV loading)
+│
+├─ notebooks/
+│   └─ analysis.ipynb                # visualization, strategy exploration
+│
+├─ requirements.txt                  # lists dependencies: pandas, ta, etc.
+└─ README.md                         # project overview
+
+Layer 1: Technical Analysis (The Foundation)
+         ↓
+Layer 2: Market Sentiment (The Wisdom of Crowds)
+         ↓
+Layer 3: Multi-Strategy Ensemble (The Committee)
+         ↓
+Layer 4: Reinforcement Learning (The Adaptive Brain)
+         ↓
+    Execute Trade (or Don't)

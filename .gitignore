@@ -1,0 +1,67 @@
+# API Credentials - NEVER commit these
+API.env
+.env
+*.env
+
+# Virtual Environment
+bot_env/
+venv/
+ENV/
+env/
+
+# Data files (large, regeneratable)
+data/
+
+# Trained models
+models/
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-settings
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Trading logs (generated at runtime)
+*.log
+alpaca_trading.log
+alpaca_live_trading.log
+
+# Generated trade records
+paper_trade_log.json
+*_trade_log.json
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Distribution and packaging
+dist/
+build/
+*.egg-info/
+*.eggs/
+
+# Python environment files
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Misc
+*.bak
+*.tmp
