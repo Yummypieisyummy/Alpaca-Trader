@@ -109,16 +109,17 @@ class SimpleAlpacaTrader:
         try:
             import yfinance as yf
             
-            # Request 1-min bars (yfinance provides ~last 60 days)
-            logger.info(f"{self.symbol}: Fetching {days_back} days of 1-min bars from yfinance...")
-            bars = yf.download(self.symbol, period=f"{days_back}d", interval="1m", progress=False)
+            # Yahoo Finance limits 1-min data to 8 days per request
+            max_days = min(days_back, 8)
+            logger.info(f"{self.symbol}: Fetching {max_days} days of 1-min bars from yfinance (max allowed: 8)...")
+            bars = yf.download(self.symbol, period=f"{max_days}d", interval="1m", progress=False)
             
             if bars is not None and len(bars) > 750:
                 bars.columns = [str(c).lower() for c in bars.columns]
                 logger.info(f"{self.symbol}: Got {len(bars)} 1-min bars from yfinance")
                 return bars
             else:
-                logger.warning(f"{self.symbol}: Only got {len(bars) if bars is not None else 0} bars, need 750+")
+                logger.warning(f"{self.symbol}: Only got {len(bars) if bars is not None else 0} bars, need 750+ (got {len(bars) if bars is not None else 0} from {max_days} days)")
                 return None
         except Exception as e:
             logger.error(f"yfinance error: {e}")
