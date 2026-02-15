@@ -162,8 +162,8 @@ class SimpleBot:
                 except Exception as e:
                     logger.error(f"{symbol} processing error: {e}", exc_info=True)
             
-            logger.info(f"Sleeping 300s (next check at {(datetime.now() + timedelta(seconds=300)).strftime('%H:%M:%S')})...")
-            time.sleep(300)
+            logger.info(f"Sleeping 60s (next check at {(datetime.now() + timedelta(seconds=60)).strftime('%H:%M:%S')})...")
+            time.sleep(60)
 
 if __name__ == "__main__":
     bot = SimpleBot(["NVDA", "TSLA", "XLK"], mode="paper")
