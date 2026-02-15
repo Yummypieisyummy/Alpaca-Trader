@@ -105,16 +105,23 @@ class SimpleAlpacaTrader:
             logger.warning(f"Alpaca bars failed: {e}, trying yfinance...")
             return self._get_yfinance_bars(timeframe, days_back)
     
-    def _get_yfinance_bars(self, timeframe: str = "5Min", days_back: int = 5) -> Optional[pd.DataFrame]:
+    def _get_yfinance_bars(self, timeframe: str = "5Min", days_back: int = 20) -> Optional[pd.DataFrame]:
         try:
             import yfinance as yf
-            interval_map = {"1Min": "1m", "5Min": "5m", "1H": "1h", "1D": "1d"}
-            bars = yf.download(self.symbol, period=f"{days_back}d", interval=interval_map.get(timeframe, "5m"), progress=False)
-            if bars is None or len(bars) == 0:
+            
+            # Request 1-min bars (yfinance provides ~last 60 days)
+            logger.info(f"{self.symbol}: Fetching {days_back} days of 1-min bars from yfinance...")
+            bars = yf.download(self.symbol, period=f"{days_back}d", interval="1m", progress=False)
+            
+            if bars is not None and len(bars) > 750:
+                bars.columns = [str(c).lower() for c in bars.columns]
+                logger.info(f"{self.symbol}: Got {len(bars)} 1-min bars from yfinance")
+                return bars
+            else:
+                logger.warning(f"{self.symbol}: Only got {len(bars) if bars is not None else 0} bars, need 750+")
                 return None
-            bars.columns = [str(c).lower() for c in bars.columns]
-            return bars
-        except:
+        except Exception as e:
+            logger.error(f"yfinance error: {e}")
             return None
     
     def place_buy_order_dollars(self, dollars: float) -> Optional[object]:
@@ -204,7 +211,7 @@ class AlpacaMultiSymbolBot:
         
         return max(base_position, 0.0)
     
-    def run(self, check_interval: int = 300, days_back: int = 5):
+    def run(self, check_interval: int = 300, days_back: int = 20):
         logger.info("=" * 70)
         logger.info("ALPACA MULTI-SYMBOL 750 EMA BOT STARTED")
         logger.info("=" * 70)
