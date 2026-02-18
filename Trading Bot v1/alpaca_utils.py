@@ -78,7 +78,7 @@ class TradingUtils:
                     print(f"  Avg Price:     ${pos.avg_fill_price:>10,.2f}")
                     print(f"  Current:       ${pos.current_price:>10,.2f}")
                     print(f"  Market Value:  ${pos.market_value:>10,.2f}")
-                    print(f"  P&L:           ${pos.unrealized_pl:>10,.2f}")
+                    print(f"  P&L:           ${float(pos.unrealized_pl):>10,.2f}")
             else:
                 print("No open positions")
         except Exception as e:

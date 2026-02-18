@@ -61,8 +61,8 @@ class SimpleBot:
             logger.error(f"{symbol} error: {e}")
             return None
 
-    def calculate_slope(self, series, periods=20):
-        """Calculate linear regression slope"""
+    def calculate_slope(self, series, periods=100):
+        """Calculate linear regression slope (100-bar default for noise reduction)"""
         if len(series) < periods:
             return 0.0
         recent = series.tail(periods).values
@@ -113,51 +113,114 @@ class SimpleBot:
                         logger.error(f"{symbol}: 'close' column not found. Columns: {list(bars.columns)}")
                         continue
                     
-                    # Calculate 750 EMA and slope
+                    # Calculate 750 EMA, short EMA, and slope
                     ema_750 = bars['close'].ewm(span=750).mean().iloc[-1]
-                    slope = self.calculate_slope(bars['close'], periods=20)
+                    ema_50 = bars['close'].ewm(span=50).mean().iloc[-1]
+                    slope = self.calculate_slope(bars['close'], periods=100)
                     
-                    logger.info(f"{symbol}: Price ${price:.2f} | EMA750 ${ema_750:.2f} | Slope {slope:.6f}")
+                    # Regime detection
+                    ema_distance = abs(ema_750 - ema_50) / ema_750
+                    is_choppy = ema_distance < 0.0015  # Less than 0.15% apart = ranging
+                    regime = "CHOPPY" if is_choppy else "TRENDING"
+                    
+                    logger.info(f"{symbol}: [{regime}] Price ${price:.2f} | EMA750 ${ema_750:.2f} | Slope {slope:.6f}")
                     
                     # Get current position
                     positions = self.client.list_positions()
                     position = next((p for p in positions if p.symbol == symbol), None)
                     
-                    # === ENTRY ===
-                    if price > ema_750 * 1.005 and slope > 0.005 and not position:
-                        position_dollars = capital * 0.025  # 2.5% risk
-                        shares = int(position_dollars / price)
-                        if shares > 0:
-                            logger.info(f"{symbol} ENTRY: {shares} shares @ ${price:.2f}")
+                    # === STOP LOSS CHECK (2.5% hard stop) ===
+                    if position and self.entry_prices[symbol]:
+                        stop_loss_price = self.entry_prices[symbol] * 0.975
+                        if price < stop_loss_price:
+                            logger.warning(f"{symbol} HIT STOP LOSS: Entry ${self.entry_prices[symbol]:.2f} -> Current ${price:.2f}")
                             try:
                                 self.client.submit_order(
                                     symbol=symbol,
-                                    qty=shares,
-                                    side="buy",
+                                    qty=int(position.qty),
+                                    side="sell",
                                     type="market",
                                     time_in_force="day"
                                 )
-                                self.entry_prices[symbol] = price
+                                self.entry_prices[symbol] = None
+                                continue
                             except Exception as e:
-                                logger.error(f"{symbol} buy order failed: {e}")
+                                logger.error(f"{symbol} stop loss order failed: {e}")
                     
-                    # === EXIT ===
-                    elif price < ema_750 * 0.995 and slope < -0.005 and position:
-                        logger.info(f"{symbol} EXIT: {position.qty} shares @ ${price:.2f}")
-                        try:
-                            self.client.submit_order(
-                                symbol=symbol,
-                                qty=int(position.qty),
-                                side="sell",
-                                type="market",
-                                time_in_force="day"
-                            )
-                            self.entry_prices[symbol] = None
-                        except Exception as e:
-                            logger.error(f"{symbol} sell order failed: {e}")
+                    # === REGIME-BASED TRADING ===
+                    if is_choppy:
+                        # MEAN REVERSION: Buy dips, sell rallies
+                        # BUY: when price drops below EMA (support)
+                        if price < ema_750 * 0.98 and not position:
+                            position_dollars = capital * 0.025  # 2.5% risk
+                            shares = int(position_dollars / price)
+                            if shares > 0:
+                                logger.info(f"{symbol} [BOUNCE ENTRY]: {shares} shares @ ${price:.2f} (reverting to support)")
+                                try:
+                                    self.client.submit_order(
+                                        symbol=symbol,
+                                        qty=shares,
+                                        side="buy",
+                                        type="market",
+                                        time_in_force="day"
+                                    )
+                                    self.entry_prices[symbol] = price
+                                except Exception as e:
+                                    logger.error(f"{symbol} buy order failed: {e}")
+                        
+                        # SELL: when price rallies above EMA (resistance)
+                        elif price > ema_750 * 1.02 and position:
+                            logger.info(f"{symbol} [BOUNCE EXIT]: {position.qty} shares @ ${price:.2f} (sold into strength)")
+                            try:
+                                self.client.submit_order(
+                                    symbol=symbol,
+                                    qty=int(position.qty),
+                                    side="sell",
+                                    type="market",
+                                    time_in_force="day"
+                                )
+                                self.entry_prices[symbol] = None
+                            except Exception as e:
+                                logger.error(f"{symbol} sell order failed: {e}")
                     
-                    elif position:
-                        logger.info(f"{symbol} HOLD: {position.qty} shares, PnL ${position.unrealized_pl:.2f}")
+                    else:
+                        # TREND FOLLOWING: Buy strength, sell weakness
+                        # ENTRY: Strong uptrend
+                        if price > ema_750 * 1.02 and slope > 0.05 and not position:
+                            position_dollars = capital * 0.025  # 2.5% risk
+                            shares = int(position_dollars / price)
+                            if shares > 0:
+                                logger.info(f"{symbol} [TREND ENTRY]: {shares} shares @ ${price:.2f} (trend up)")
+                                try:
+                                    self.client.submit_order(
+                                        symbol=symbol,
+                                        qty=shares,
+                                        side="buy",
+                                        type="market",
+                                        time_in_force="day"
+                                    )
+                                    self.entry_prices[symbol] = price
+                                except Exception as e:
+                                    logger.error(f"{symbol} buy order failed: {e}")
+                        
+                        # EXIT: Strong downtrend
+                        elif price < ema_750 * 0.98 and slope < -0.05 and position:
+                            logger.info(f"{symbol} [TREND EXIT]: {position.qty} shares @ ${price:.2f} (trend down)")
+                            try:
+                                self.client.submit_order(
+                                    symbol=symbol,
+                                    qty=int(position.qty),
+                                    side="sell",
+                                    type="market",
+                                    time_in_force="day"
+                                )
+                                self.entry_prices[symbol] = None
+                            except Exception as e:
+                                logger.error(f"{symbol} sell order failed: {e}")
+                    
+                    # Hold status
+                    if position:
+                        logger.info(f"{symbol} HOLD: {position.qty} shares, PnL ${float(position.unrealized_pl):.2f}")
                 
                 except Exception as e:
                     logger.error(f"{symbol} processing error: {e}", exc_info=True)

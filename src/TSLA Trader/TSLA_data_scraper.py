@@ -15,11 +15,11 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 
 client = StockHistoricalDataClient(API_KEY, SECRET_KEY)
 
-# 3 years of 5-minute bars
+# 3 years of 1-minute bars
 request = StockBarsRequest(
     symbol_or_symbols="TSLA",
-    timeframe=TimeFrame(5, TimeFrameUnit.Minute),
-    start=datetime(2019, 1, 1),
+    timeframe=TimeFrame(1, TimeFrameUnit.Minute),
+    start=datetime(2024, 1, 1),
     end=datetime(2025, 1, 1),
     adjustment="all"
 )
@@ -35,13 +35,13 @@ bars["timestamp"] = pd.to_datetime(bars["timestamp"])
 bars["timestamp"] = bars["timestamp"].dt.tz_convert("America/New_York")
 
 # Save to CSV
-bars.to_csv(base_path / "data" / "tsla_5min_2019-2025.csv", index=False)
+bars.to_csv(base_path / "data" / "tsla_1min_2024-2025.csv", index=False)
 
 print("Download complete.")
 print(bars.head())
 
 # Load the CSV
-df = pd.read_csv(base_path / "data" / "tsla_5min_2019-2025.csv")
+df = pd.read_csv(base_path / "data" / "tsla_1min_2024-2025.csv")
 df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
 df["timestamp"] = df["timestamp"].dt.tz_convert("America/New_York")
 
@@ -55,9 +55,9 @@ df = df[((df["hour"] == 9) & (df["minute"] >= 30)) |
 # Sort by timestamp
 df = df.sort_values("timestamp").reset_index(drop=True)
 
-# Check for missing candles (5-minute gaps)
+# Check for missing candles (1-minute gaps)
 df["time_diff"] = df["timestamp"].diff().dt.total_seconds() / 60
-missing_candles = df[df["time_diff"] != 5.0]
+missing_candles = df[df["time_diff"] != 1.0]
 print(f"\nMissing candles found: {len(missing_candles)}")
 if len(missing_candles) > 0:
     print(missing_candles[["timestamp", "time_diff"]].head(10))
@@ -66,7 +66,7 @@ if len(missing_candles) > 0:
 df = df.drop(columns=["hour", "minute", "time_diff"])
 
 # Save cleaned data
-df.to_csv(base_path / "data" / "tsla_5min_2019-2025_cleaned.csv", index=False)
+df.to_csv(base_path / "data" / "tsla_1min_2024-2025_cleaned.csv", index=False)
 print("\nCleaning complete.")
 print(df.head())
 
